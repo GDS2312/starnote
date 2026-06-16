@@ -1,5 +1,5 @@
 const DB_NAME = 'starnote-db'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 let db = null
 
@@ -28,7 +28,12 @@ function openDB() {
         d.createObjectStore('settings', { keyPath: 'key' })
       }
     }
-    req.onsuccess = (e) => { db = e.target.result; resolve(db) }
+    req.onsuccess = (e) => {
+      db = e.target.result
+      // Handle DB close event (e.g. user cleared data via DevTools)
+      db.onclose = () => { db = null }
+      resolve(db)
+    }
     req.onerror = () => reject(req.error)
   })
 }
@@ -70,7 +75,7 @@ export const sampleNotes = [
       { id: genId(), type: 'p', content: '<strong>MVP（Q2）</strong>：三栏布局 + 块编辑器 + IndexedDB + 多模态工具栏<br><strong>V1.0（Q3）</strong>：AI API接入 + 知识图谱 + 语音录制<br><strong>V2.0（Q4）</strong>：协作编辑 + 云同步 + 插件市场' },
       { id: genId(), type: 'image', content: '架构图：前端 → IndexedDB ↔ AI API 三层架构' },
     ],
-    createdAt: now(), updatedAt: now(),
+    archived: false, createdAt: now(), updatedAt: now(),
   },
   {
     id: genId(), title: '企业级AI平台选型调研',
@@ -99,7 +104,7 @@ export const sampleNotes = [
         { text: '监控告警：自建Langfuse实例（Token计量 + 质量监控）', checked: false },
       ]},
     ],
-    createdAt: now(), updatedAt: now(),
+    archived: false, createdAt: now(), updatedAt: now(),
   },
   {
     id: genId(), title: 'OpenClaw星辰超级智能体平台规划',
@@ -120,7 +125,7 @@ export const sampleNotes = [
       { id: genId(), type: 'h2', content: '落地路径' },
       { id: genId(), type: 'p', content: '<strong>Phase 1（已完成）</strong>：Dify平台部署 & 基础知识库搭建<br><strong>Phase 2（进行中）</strong>：客服知识Agent上线 & 内部测试<br><strong>Phase 3（Q3）</strong>：运维Agent & 营销Agent交付<br><strong>Phase 4（Q4）</strong>：全平台开放 & 地市推广' },
     ],
-    createdAt: now(), updatedAt: now(),
+    archived: false, createdAt: now(), updatedAt: now(),
   },
   {
     id: genId(), title: 'RAG技术深度研究笔记',
@@ -146,7 +151,7 @@ Reranker叠加    96%    94%    ~500ms 高精度场景` },
         { text: 'pgvector：PostgreSQL原生扩展，运维成本最低', checked: false },
       ]},
     ],
-    createdAt: now(), updatedAt: now(),
+    archived: false, createdAt: now(), updatedAt: now(),
   },
   {
     id: genId(), title: '团队AI效能提升计划',
@@ -164,7 +169,7 @@ Reranker叠加    96%    94%    ~500ms 高精度场景` },
       ]},
       { id: genId(), type: 'callout', content: '<strong>预期收益：</strong>代码产出 +150%、会议时间 -40%、文档产出 +200%、重复性工作自动化率 >80%。' },
     ],
-    createdAt: now(), updatedAt: now(),
+    archived: false, createdAt: now(), updatedAt: now(),
   },
 ]
 
@@ -284,10 +289,22 @@ export async function initSampleData() {
   const existing = await getAllNotes()
   if (existing.length > 0) return existing
   const d = await openDB()
+  // Insert sample notes
   const tx = d.transaction('notes', 'readwrite')
   const store = tx.objectStore('notes')
   for (const note of sampleNotes) store.add(note)
   await new Promise((resolve) => { tx.oncomplete = resolve })
+  // Seed inbox with sample items
+  const inboxTx = d.transaction('inbox', 'readwrite')
+  const inboxStore = inboxTx.objectStore('inbox')
+  const inboxItems = [
+    { id: 'i1', type: 'summary', title: 'AI摘要：AI笔记软件调研报告', preview: '核心结论：建议采用Notion AI + 自研Agent桥接的混合架构方案...', createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { id: 'i2', type: 'qa', title: 'AI问答：RAG技术选型建议', preview: '推荐HyDE + BM25混合检索 + BGE-Reranker的三阶段pipeline...', createdAt: new Date(Date.now() - 7200000).toISOString() },
+    { id: 'i3', type: 'voice', title: '🎤 语音转录：产品迭代思路', preview: '下个版本重点优化AI面板交互，增加对话历史和上下文记忆功能...', createdAt: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'i4', type: 'image', title: '📷 OCR识别：白板会议记录', preview: '提取内容：Q3目标-星辰平台v2.6上线、30+部门AI Agent落地...', createdAt: new Date(Date.now() - 172800000).toISOString() },
+  ]
+  inboxItems.forEach(item => inboxStore.add(item))
+  await new Promise((resolve) => { inboxTx.oncomplete = resolve })
   return sampleNotes
 }
 
