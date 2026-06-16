@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getNote, getAllNotes, saveNote, deleteNote as dbDelete, initSampleData, genId, now } from './store/db.js'
+import { getNote, getAllNotes, saveNote, deleteNote as dbDelete, initSampleData, genId, now, toggleArchive } from './store/db.js'
 import Sidebar from './components/Sidebar.jsx'
 import Editor from './components/Editor.jsx'
 import AIPanel from './components/AIPanel.jsx'
 import GraphView from './components/GraphView.jsx'
 import RecordingOverlay from './components/RecordingOverlay.jsx'
+import InboxView from './components/InboxView.jsx'
+import QuickCaptureView from './components/QuickCaptureView.jsx'
+import TagsView from './components/TagsView.jsx'
+import ArchiveView from './components/ArchiveView.jsx'
 import './App.css'
 
 export default function App() {
@@ -44,7 +48,7 @@ export default function App() {
     const note = {
       id: genId(), title: '未命名笔记',
       blocks: [{ id: genId(), type: 'p', content: '开始记录...' }],
-      tags: [], color: '#7C6FFF',
+      tags: [], color: '#7C6FFF', archived: false,
       createdAt: now(), updatedAt: now(),
     }
     const saved = await saveNote(note)
@@ -66,6 +70,59 @@ export default function App() {
     } else { setActiveId(null); setActiveNote(null) }
   }, [activeNote, notes])
 
+  const handleArchiveNote = useCallback(async () => {
+    if (!activeNote) return
+    const updated = await toggleArchive(activeNote)
+    setActiveNote(updated)
+    setNotes(prev => prev.map(n => n.id === updated.id ? updated : n))
+  }, [activeNote])
+
+  const refreshNotes = useCallback(async () => {
+    const all = await getAllNotes()
+    setNotes(all)
+    if (activeId) {
+      const n = await getNote(activeId)
+      if (n) setActiveNote(n)
+    }
+  }, [activeId])
+
+  // Render the main content based on viewMode
+  const renderMain = () => {
+    switch (viewMode) {
+      case 'inbox':
+        return <InboxView onSelectNote={handleSelectNote} />
+      case 'graph':
+        return <GraphView notes={notes} onSelectNote={handleSelectNote} />
+      case 'capture':
+        return <QuickCaptureView onNew={handleNewNote} onSelect={handleSelectNote} />
+      case 'tags':
+        return <TagsView onSelectNote={handleSelectNote} />
+      case 'archived':
+        return <ArchiveView onSelectNote={handleSelectNote} onRefresh={refreshNotes} />
+      case 'editor':
+      default:
+        if (activeNote) {
+          return (
+            <Editor
+              key={activeNote.id}
+              note={activeNote} onSave={handleSaveNote}
+              onToggleAi={() => setAiOpen(v => !v)} aiOpen={aiOpen}
+              onRecording={() => setRecording(true)}
+              onArchive={handleArchiveNote}
+            />
+          )
+        }
+        return (
+          <div className="empty-state">
+            <div className="empty-icon">✦</div>
+            <h3>欢迎使用星记</h3>
+            <p>创建第一篇笔记，开始你的AI知识之旅</p>
+            <button className="btn-primary" onClick={handleNewNote}>+ 创建笔记</button>
+          </div>
+        )
+    }
+  }
+
   return (
     <div className="app">
       <Sidebar
@@ -74,23 +131,7 @@ export default function App() {
         onDelete={handleDeleteNote} onViewChange={setViewMode} viewMode={viewMode}
       />
       <main className="editor">
-        {viewMode === 'graph' ? (
-          <GraphView notes={notes} onSelectNote={handleSelectNote} />
-        ) : activeNote ? (
-          <Editor
-            key={activeNote.id}
-            note={activeNote} onSave={handleSaveNote}
-            onToggleAi={() => setAiOpen(v => !v)} aiOpen={aiOpen}
-            onRecording={() => setRecording(true)}
-          />
-        ) : (
-          <div className="empty-state">
-            <div className="empty-icon">✦</div>
-            <h3>欢迎使用星记</h3>
-            <p>创建第一篇笔记，开始你的AI知识之旅</p>
-            <button className="btn-primary" onClick={handleNewNote}>+ 创建笔记</button>
-          </div>
-        )}
+        {renderMain()}
       </main>
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} note={activeNote} />
       <RecordingOverlay

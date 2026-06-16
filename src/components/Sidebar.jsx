@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
 
 const navItems = [
-  { key: 'all', label: '全部笔记', icon: '📝', badge: true },
-  { key: 'inbox', label: 'AI收件箱', icon: '📥' },
-  { key: 'graph', label: '知识图谱', icon: '🕸️' },
-  { key: 'capture', label: '快速捕捉', icon: '⚡' },
-  { key: 'tags', label: '标签', icon: '🏷️' },
-  { key: 'archived', label: '已归档', icon: '🗄️' },
+  { key: 'all', label: '全部笔记', icon: '📝', view: 'editor', badge: true },
+  { key: 'inbox', label: 'AI收件箱', icon: '📥', view: 'inbox' },
+  { key: 'graph', label: '知识图谱', icon: '🕸️', view: 'graph' },
+  { key: 'capture', label: '快速捕捉', icon: '⚡', view: 'capture' },
+  { key: 'tags', label: '标签', icon: '🏷️', view: 'tags' },
+  { key: 'archived', label: '已归档', icon: '🗄️', view: 'archived' },
 ]
 
 const colors = { '#7C6FFF': 'purple', '#00D2D3': 'teal', '#34D399': 'green', '#FB923C': 'orange' }
@@ -40,20 +40,22 @@ export default function Sidebar({ notes, activeId, onSelect, onNew, onDelete, on
         <input type="text" placeholder="搜索笔记..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
       <nav className="sidebar-nav">
-        {navItems.map(item => (
-          <div
-            key={item.key}
-            className={`nav-item${viewMode === item.key || (item.key === 'all' && viewMode === 'editor' && activeId) ? ' active' : ''}`}
-            onClick={() => {
-              if (item.key === 'graph') onViewChange('graph')
-              else onViewChange('editor')
-            }}
-          >
-            <span className="icon">{item.icon}</span>
-            {item.label}
-            {item.badge && <span className="badge">{notes.length}</span>}
-          </div>
-        ))}
+        {navItems.map(item => {
+          const isActive = item.key === 'all'
+            ? (viewMode === 'editor' && activeId)
+            : (viewMode === item.view)
+          return (
+            <div
+              key={item.key}
+              className={`nav-item${isActive ? ' active' : ''}`}
+              onClick={() => onViewChange(item.view)}
+            >
+              <span className="icon">{item.icon}</span>
+              {item.label}
+              {item.badge && <span className="badge">{notes.filter(n => !n.archived).length}</span>}
+            </div>
+          )
+        })}
       </nav>
       <div className="sidebar-section">
         <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between' }}>

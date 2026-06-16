@@ -1,5 +1,5 @@
 const DB_NAME = 'starnote-db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let db = null
 
@@ -12,6 +12,17 @@ function openDB() {
       if (!d.objectStoreNames.contains('notes')) {
         const store = d.createObjectStore('notes', { keyPath: 'id' })
         store.createIndex('updatedAt', 'updatedAt', { unique: false })
+        store.createIndex('archived', 'archived', { unique: false })
+      } else if (!d.objectStoreNames.contains('inbox')) {
+        // v2 migration: add archived index to existing store
+        const tx = e.target.transaction
+        const store = tx.objectStore('notes')
+        if (!store.indexNames.contains('archived')) {
+          store.createIndex('archived', 'archived', { unique: false })
+        }
+      }
+      if (!d.objectStoreNames.contains('inbox')) {
+        d.createObjectStore('inbox', { keyPath: 'id' })
       }
       if (!d.objectStoreNames.contains('settings')) {
         d.createObjectStore('settings', { keyPath: 'key' })
@@ -172,6 +183,70 @@ export async function getAllNotes() {
     }
     req.onerror = () => resolve([])
   })
+}
+
+export async function getArchivedNotes() {
+  const all = await getAllNotes()
+  return all.filter(n => n.archived === true)
+}
+
+export async function getActiveNotes() {
+  const all = await getAllNotes()
+  return all.filter(n => !n.archived)
+}
+
+export async function toggleArchive(note) {
+  const d = await openDB()
+  const n = { ...note, archived: !note.archived, updatedAt: now() }
+  const tx = d.transaction('notes', 'readwrite')
+  tx.objectStore('notes').put(n)
+  return new Promise((resolve) => {
+    tx.oncomplete = () => resolve(n)
+  })
+}
+
+export async function getAllTags() {
+  const notes = await getAllNotes()
+  const tagMap = {}
+  notes.forEach(n => {
+    (n.tags || []).forEach(t => {
+      if (!tagMap[t]) tagMap[t] = { name: t, count: 0, notes: [] }
+      tagMap[t].count++
+      tagMap[t].notes.push(n.id)
+    })
+  })
+  return Object.values(tagMap).sort((a, b) => b.count - a.count)
+}
+
+export async function getNotesByTag(tag) {
+  const notes = await getAllNotes()
+  return notes.filter(n => (n.tags || []).includes(tag))
+}
+
+// Inbox (AI interactions log)
+export async function saveInboxItem(item) {
+  const d = await openDB()
+  const i = { ...item, id: item.id || genId(), createdAt: now() }
+  const tx = d.transaction('inbox', 'readwrite')
+  tx.objectStore('inbox').put(i)
+  return new Promise((resolve) => { tx.oncomplete = () => resolve(i) })
+}
+
+export async function getInboxItems() {
+  const d = await openDB()
+  const tx = d.transaction('inbox', 'readonly')
+  const req = tx.objectStore('inbox').getAll()
+  return new Promise((resolve) => {
+    req.onsuccess = () => resolve((req.result || []).sort((a, b) => b.createdAt?.localeCompare(a.createdAt)))
+    req.onerror = () => resolve([])
+  })
+}
+
+export async function deleteInboxItem(id) {
+  const d = await openDB()
+  const tx = d.transaction('inbox', 'readwrite')
+  tx.objectStore('inbox').delete(id)
+  return new Promise((resolve) => { tx.oncomplete = resolve })
 }
 
 export async function getNote(id) {
