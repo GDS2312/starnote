@@ -15,7 +15,9 @@ const defaultResponses = [
 
 export default function AIPanel({ open, onClose, note }) {
   const [messages, setMessages] = useState([
-    { role: 'ai', content: '你好！我是你的AI写作助手。我可以帮你摘要、扩写或回答问题。有什么需要帮助的吗？' },
+    { role: 'ai', content: '你好！我是你的AI写作助手。我可以帮你摘要、扩写内容或回答问题。有什么需要帮助的吗？' },
+    { role: 'user', content: '帮我总结一下这篇笔记的要点' },
+    { role: 'ai', content: '以下是本报告的核心要点：<ul><li><strong>调研目标：</strong>评估2026年主流AI笔记软件，为团队选型提供参考</li><li><strong>评估维度：</strong>智能检索(25%)、多模态(20%)、协作(20%)、AI生成(20%)、API开放(15%)</li><li><strong>推荐方案：</strong>Notion AI + 自研Agent桥接的混合架构</li></ul>' },
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)

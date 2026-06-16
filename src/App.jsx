@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getAllNotes, getNote, saveNote, deleteNote as dbDelete, initSampleData, genId, now } from './store/db.js'
+import { getNote, getAllNotes, saveNote, deleteNote as dbDelete, initSampleData, genId, now } from './store/db.js'
 import Sidebar from './components/Sidebar.jsx'
 import Editor from './components/Editor.jsx'
 import AIPanel from './components/AIPanel.jsx'
@@ -14,30 +14,28 @@ export default function App() {
   const [viewMode, setViewMode] = useState('editor')
   const [aiOpen, setAiOpen] = useState(false)
   const [recording, setRecording] = useState(false)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     initSampleData().then(all => {
       setNotes(all)
-      if (all.length > 0) { setActiveId(all[0].id); setActiveNote(all[0]) }
-      setLoading(false)
+      if (all.length > 0) {
+        setActiveId(all[0].id)
+        setActiveNote(all[0])
+      }
     })
   }, [])
 
-  useEffect(() => {
-    if (activeId) {
-      getNote(activeId).then(n => { if (n) setActiveNote(n) })
-    }
-  }, [activeId])
-
-  const handleSelectNote = useCallback((id) => {
+  const handleSelectNote = useCallback(async (id) => {
     setActiveId(id)
     setViewMode('editor')
+    const n = await getNote(id)
+    if (n) setActiveNote(n)
   }, [])
 
   const handleSaveNote = useCallback(async (updates) => {
-    if (!activeNote) return
-    const updated = await saveNote({ ...activeNote, ...updates })
+    const current = activeNote
+    if (!current || !current.id) return
+    const updated = await saveNote({ ...current, ...updates })
     setActiveNote(updated)
     setNotes(prev => prev.map(n => n.id === updated.id ? updated : n))
   }, [activeNote])
@@ -76,12 +74,11 @@ export default function App() {
         onDelete={handleDeleteNote} onViewChange={setViewMode} viewMode={viewMode}
       />
       <main className="editor">
-        {loading ? (
-          <div className="loading">✦ 加载中...</div>
-        ) : viewMode === 'graph' ? (
+        {viewMode === 'graph' ? (
           <GraphView notes={notes} onSelectNote={handleSelectNote} />
         ) : activeNote ? (
           <Editor
+            key={activeNote.id}
             note={activeNote} onSave={handleSaveNote}
             onToggleAi={() => setAiOpen(v => !v)} aiOpen={aiOpen}
             onRecording={() => setRecording(true)}
