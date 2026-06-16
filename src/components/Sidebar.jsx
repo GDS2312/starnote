@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { getUserProfile, saveUserProfile } from '../store/db.js'
 
 const navItems = [
   { key: 'all', label: '全部笔记', icon: '📝', view: 'editor', badge: true },
@@ -8,8 +9,6 @@ const navItems = [
   { key: 'tags', label: '标签', icon: '🏷️', view: 'tags' },
   { key: 'archived', label: '已归档', icon: '🗄️', view: 'archived' },
 ]
-
-const colors = { '#7C6FFF': 'purple', '#00D2D3': 'teal', '#34D399': 'green', '#FB923C': 'orange' }
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -23,6 +22,32 @@ function timeAgo(dateStr) {
 
 export default function Sidebar({ notes, activeId, onSelect, onNew, onDelete, onViewChange, viewMode }) {
   const [search, setSearch] = useState('')
+  const [profile, setProfile] = useState({ name: '', role: '' })
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editRole, setEditRole] = useState('')
+  const nameRef = useRef(null)
+
+  useEffect(() => {
+    getUserProfile().then(p => { setProfile(p); setEditName(p.name || ''); setEditRole(p.role || '') })
+  }, [])
+
+  const displayName = profile.name || '点击设置'
+  const displayRole = profile.role || '你的身份'
+  const initials = profile.name ? profile.name.slice(-2) || profile.name[0] : '?'
+
+  const saveProfile = async () => {
+    const p = await saveUserProfile({ name: editName.trim(), role: editRole.trim() })
+    setProfile(p)
+    setEditing(false)
+  }
+
+  const handleEditClick = () => {
+    setEditName(profile.name || '')
+    setEditRole(profile.role || '')
+    setEditing(true)
+    setTimeout(() => nameRef.current?.focus(), 100)
+  }
 
   const filtered = useMemo(() => {
     if (!search.trim()) return notes
@@ -79,18 +104,33 @@ export default function Sidebar({ notes, activeId, onSelect, onNew, onDelete, on
         ))}
       </div>
       <div className="sidebar-bottom">
-        <div className="sidebar-user">
-          <div className="user-info">
-            <div className="user-avatar">G</div>
-            <div>
-              <div className="user-name">郭哥</div>
-              <div className="user-role">AI项目经理</div>
+        {editing ? (
+          <div className="user-edit-popup">
+            <input ref={nameRef} className="user-edit-input" placeholder="你的名字" value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveProfile() }} />
+            <input className="user-edit-input" placeholder="你的身份/角色" value={editRole}
+              onChange={e => setEditRole(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveProfile() }} />
+            <div className="user-edit-btns">
+              <button className="new-btn" onClick={saveProfile}>✓ 保存</button>
+              <button className="user-cancel-btn" onClick={() => setEditing(false)}>取消</button>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className="new-btn" onClick={onNew}>+</button>
+        ) : (
+          <div className="sidebar-user" onClick={handleEditClick} title="点击设置姓名">
+            <div className="user-info">
+              <div className="user-avatar">{initials}</div>
+              <div>
+                <div className="user-name">{displayName}</div>
+                <div className="user-role">{displayRole}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="new-btn" onClick={e => { e.stopPropagation(); onNew() }}>+</button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </aside>
   )

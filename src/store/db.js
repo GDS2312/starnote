@@ -308,4 +308,22 @@ export async function initSampleData() {
   return sampleNotes
 }
 
+// User profile
+export async function getUserProfile() {
+  const d = await openDB()
+  return new Promise((resolve) => {
+    const tx = d.transaction('settings', 'readonly')
+    const req = tx.objectStore('settings').get('userProfile')
+    req.onsuccess = () => resolve(req.result || { key: 'userProfile', name: '', role: '' })
+    req.onerror = () => resolve({ key: 'userProfile', name: '', role: '' })
+  })
+}
+
+export async function saveUserProfile(profile) {
+  const d = await openDB()
+  const tx = d.transaction('settings', 'readwrite')
+  tx.objectStore('settings').put({ key: 'userProfile', ...profile })
+  return new Promise((resolve) => { tx.oncomplete = () => resolve(profile) })
+}
+
 export { genId, now }

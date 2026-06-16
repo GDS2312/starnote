@@ -14,6 +14,7 @@ const defaultResponses = [
 ]
 
 export default function AIPanel({ open, onClose, note }) {
+  const [profile, setProfile] = useState({ name: '' })
   const [messages, setMessages] = useState([
     { role: 'ai', content: '你好！我是你的AI写作助手。我可以帮你摘要、扩写内容或回答问题。有什么需要帮助的吗？' },
     { role: 'user', content: '帮我总结一下这篇笔记的要点' },
@@ -22,6 +23,11 @@ export default function AIPanel({ open, onClose, note }) {
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const chatRef = useRef(null)
+
+  useEffect(() => {
+    import('../store/db.js').then(m => m.getUserProfile()).then(p => setProfile(p))
+  }, [])
+  const userInitial = profile.name ? (profile.name.slice(-2) || profile.name[0]) : '?'
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -73,7 +79,7 @@ export default function AIPanel({ open, onClose, note }) {
         {messages.map((msg, i) => (
           <div key={i} className={`ai-msg${msg.role === 'user' ? ' user' : ''}`}>
             <div className={`av ${msg.role === 'ai' ? 'ai' : 'user'}`}>
-              {msg.role === 'ai' ? 'AI' : 'G'}
+              {msg.role === 'ai' ? 'AI' : userInitial}
             </div>
             <div className={`bubble ${msg.role === 'ai' ? 'ai-bub' : 'user-bub'}`}
               dangerouslySetInnerHTML={{ __html: msg.content }}
