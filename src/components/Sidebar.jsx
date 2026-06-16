@@ -20,7 +20,7 @@ function timeAgo(dateStr) {
   return days < 7 ? `${days}天前` : new Date(dateStr).toLocaleDateString('zh-CN')
 }
 
-export default function Sidebar({ notes, activeId, onSelect, onNew, onDelete, onViewChange, viewMode }) {
+export default function Sidebar({ notes, activeId, onSelect, onNew, onDelete, onViewChange, viewMode, sidebarOpen }) {
   const [search, setSearch] = useState('')
   const [profile, setProfile] = useState({ name: '', role: '' })
   const [editing, setEditing] = useState(false)
@@ -56,7 +56,7 @@ export default function Sidebar({ notes, activeId, onSelect, onNew, onDelete, on
   }, [notes, search])
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
       <div className="sidebar-logo">
         <div className="logo-text"><span>✦</span> 星记</div>
         <div className="logo-sub">AI知识工作台</div>

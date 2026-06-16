@@ -18,6 +18,11 @@ export default function App() {
   const [viewMode, setViewMode] = useState('editor')
   const [aiOpen, setAiOpen] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const closeSidebar = () => setSidebarOpen(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const closeSidebar = () => setSidebarOpen(false)
 
   useEffect(() => {
     initSampleData().then(all => {
@@ -32,6 +37,7 @@ export default function App() {
   const handleSelectNote = useCallback(async (id) => {
     setActiveId(id)
     setViewMode('editor')
+    closeSidebar()
     const n = await getNote(id)
     if (n) setActiveNote(n)
   }, [])
@@ -125,10 +131,17 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Mobile hamburger toggle */}
+      <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+
+      {/* Sidebar overlay for mobile */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
+
       <Sidebar
         notes={notes} activeId={activeId}
         onSelect={handleSelectNote} onNew={handleNewNote}
-        onDelete={handleDeleteNote} onViewChange={setViewMode} viewMode={viewMode}
+        onDelete={handleDeleteNote} onViewChange={(v) => { setViewMode(v); closeSidebar() }} viewMode={viewMode}
+        sidebarOpen={sidebarOpen}
       />
       <main className="editor">
         {renderMain()}
