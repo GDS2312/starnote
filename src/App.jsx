@@ -22,6 +22,7 @@ export default function App() {
   const [profile, setProfile] = useState({ name: '', role: '' })
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
   const toggleSidebar = useCallback(() => setSidebarOpen(v => !v), [])
+  const handleViewChange = useCallback((v) => { setViewMode(v); setSidebarOpen(false) }, [])
 
   useEffect(() => { getUserProfile().then(setProfile) }, [])
   useEffect(() => {
