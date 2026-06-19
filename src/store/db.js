@@ -13,10 +13,10 @@ function openDB() {
         const store = d.createObjectStore('notes', { keyPath: 'id' })
         store.createIndex('updatedAt', 'updatedAt', { unique: false })
         store.createIndex('archived', 'archived', { unique: false })
-      } else if (!d.objectStoreNames.contains('inbox')) {
-        // v2 migration: add archived index to existing store
-        const tx = e.target.transaction
-        const store = tx.objectStore('notes')
+      }
+      // Independent migration: add archived index if notes store exists but lacks it
+      if (d.objectStoreNames.contains('notes')) {
+        const store = e.target.transaction.objectStore('notes')
         if (!store.indexNames.contains('archived')) {
           store.createIndex('archived', 'archived', { unique: false })
         }
@@ -191,13 +191,29 @@ export async function getAllNotes() {
 }
 
 export async function getArchivedNotes() {
-  const all = await getAllNotes()
-  return all.filter(n => n.archived === true)
+  const d = await openDB()
+  const tx = d.transaction('notes', 'readonly')
+  const idx = tx.objectStore('notes').index('archived')
+  const req = idx.openCursor(IDBKeyRange.only(true))
+  const notes = []
+  return new Promise((resolve) => {
+    req.onsuccess = (e) => {
+      const cursor = e.target.result
+      if (cursor) { notes.push(cursor.value); cursor.continue() }
+      else resolve(notes)
+    }
+    req.onerror = () => resolve([])
+  })
 }
 
 export async function getActiveNotes() {
-  const all = await getAllNotes()
-  return all.filter(n => !n.archived)
+  const d = await openDB()
+  return new Promise((resolve) => {
+    const tx = d.transaction('notes', 'readonly')
+    const req = tx.objectStore('notes').getAll()
+    req.onsuccess = () => resolve(req.result.filter(n => !n.archived))
+    req.onerror = () => resolve([])
+  })
 }
 
 export async function toggleArchive(note) {
@@ -289,14 +305,11 @@ export async function initSampleData() {
   const existing = await getAllNotes()
   if (existing.length > 0) return existing
   const d = await openDB()
-  // Insert sample notes
-  const tx = d.transaction('notes', 'readwrite')
-  const store = tx.objectStore('notes')
-  for (const note of sampleNotes) store.add(note)
-  await new Promise((resolve) => { tx.oncomplete = resolve })
-  // Seed inbox with sample items
-  const inboxTx = d.transaction('inbox', 'readwrite')
-  const inboxStore = inboxTx.objectStore('inbox')
+  // Single transaction across notes + inbox
+  const tx = d.transaction(['notes', 'inbox'], 'readwrite')
+  const noteStore = tx.objectStore('notes')
+  for (const note of sampleNotes) noteStore.add(note)
+  const inboxStore = tx.objectStore('inbox')
   const inboxItems = [
     { id: 'i1', type: 'summary', title: 'AI摘要：AI笔记软件调研报告', preview: '核心结论：建议采用Notion AI + 自研Agent桥接的混合架构方案...', createdAt: new Date(Date.now() - 3600000).toISOString() },
     { id: 'i2', type: 'qa', title: 'AI问答：RAG技术选型建议', preview: '推荐HyDE + BM25混合检索 + BGE-Reranker的三阶段pipeline...', createdAt: new Date(Date.now() - 7200000).toISOString() },
@@ -304,7 +317,7 @@ export async function initSampleData() {
     { id: 'i4', type: 'image', title: '📷 OCR识别：白板会议记录', preview: '提取内容：Q3目标-星辰平台v2.6上线、30+部门AI Agent落地...', createdAt: new Date(Date.now() - 172800000).toISOString() },
   ]
   inboxItems.forEach(item => inboxStore.add(item))
-  await new Promise((resolve) => { inboxTx.oncomplete = resolve })
+  await new Promise((resolve) => { tx.oncomplete = resolve })
   return sampleNotes
 }
 
@@ -324,6 +337,11 @@ export async function saveUserProfile(profile) {
   const tx = d.transaction('settings', 'readwrite')
   tx.objectStore('settings').put({ key: 'userProfile', ...profile })
   return new Promise((resolve) => { tx.oncomplete = () => resolve(profile) })
+}
+
+// Utility
+export function getInitials(name) {
+  return name ? name.slice(-2) || name[0] : '?'
 }
 
 export { genId, now }

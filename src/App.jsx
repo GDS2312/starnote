@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getNote, getAllNotes, saveNote, deleteNote as dbDelete, initSampleData, genId, now, toggleArchive } from './store/db.js'
+import { getNote, getAllNotes, saveNote, deleteNote as dbDelete, initSampleData, genId, now, toggleArchive, getUserProfile } from './store/db.js'
 import Sidebar from './components/Sidebar.jsx'
 import Editor from './components/Editor.jsx'
 import AIPanel from './components/AIPanel.jsx'
@@ -19,8 +19,11 @@ export default function App() {
   const [aiOpen, setAiOpen] = useState(false)
   const [recording, setRecording] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const closeSidebar = () => setSidebarOpen(false)
+  const [profile, setProfile] = useState({ name: '', role: '' })
+  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+  const toggleSidebar = useCallback(() => setSidebarOpen(v => !v), [])
 
+  useEffect(() => { getUserProfile().then(setProfile) }, [])
   useEffect(() => {
     initSampleData().then(all => {
       setNotes(all)
@@ -129,7 +132,7 @@ export default function App() {
   return (
     <div className="app">
       {/* Mobile hamburger toggle */}
-      <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+      <button className="mobile-toggle" onClick={toggleSidebar}>☰</button>
 
       {/* Sidebar overlay for mobile */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
@@ -137,13 +140,13 @@ export default function App() {
       <Sidebar
         notes={notes} activeId={activeId}
         onSelect={handleSelectNote} onNew={handleNewNote}
-        onDelete={handleDeleteNote} onViewChange={(v) => { setViewMode(v); closeSidebar() }} viewMode={viewMode}
-        sidebarOpen={sidebarOpen}
+        onDelete={handleDeleteNote} onViewChange={handleViewChange} viewMode={viewMode}
+        sidebarOpen={sidebarOpen} profile={profile}
       />
       <main className="editor">
         {renderMain()}
       </main>
-      <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} note={activeNote} />
+      <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} note={activeNote} profile={profile} />
       <RecordingOverlay
         show={recording}
         onClose={() => setRecording(false)}

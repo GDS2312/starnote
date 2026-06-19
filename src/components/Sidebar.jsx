@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { getUserProfile, saveUserProfile } from '../store/db.js'
+import { getUserProfile, saveUserProfile, getInitials } from '../store/db.js'
 
 const navItems = [
   { key: 'all', label: '全部笔记', icon: '📝', view: 'editor', badge: true },
@@ -34,12 +34,17 @@ export default function Sidebar({ notes, activeId, onSelect, onNew, onDelete, on
 
   const displayName = profile.name || '点击设置'
   const displayRole = profile.role || '你的身份'
-  const initials = profile.name ? profile.name.slice(-2) || profile.name[0] : '?'
+  const initials = getInitials(profile.name)
 
   const saveProfile = async () => {
-    const p = await saveUserProfile({ name: editName.trim(), role: editRole.trim() })
-    setProfile(p)
-    setEditing(false)
+    try {
+      const p = await saveUserProfile({ name: editName.trim(), role: editRole.trim() })
+      setProfile(p)
+      setEditing(false)
+    } catch (err) {
+      console.warn('保存用户信息失败:', err)
+      setEditing(false)
+    }
   }
 
   const handleEditClick = () => {

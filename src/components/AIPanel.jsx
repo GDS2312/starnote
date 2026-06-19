@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { getInitials } from '../store/db.js'
 
 const quickActions = [
   { key: 'summary', label: '📝 摘要' },
@@ -13,8 +14,7 @@ const defaultResponses = [
   '关于这个维度的分析：<ul><li><strong>多模态输入</strong> 支持语音/图像/链接多种方式</li><li><strong>AI增强</strong> 支持摘要/扩写/问答</li><li><strong>知识图谱</strong> 可视化笔记关联关系</li></ul>',
 ]
 
-export default function AIPanel({ open, onClose, note }) {
-  const [profile, setProfile] = useState({ name: '' })
+export default function AIPanel({ open, onClose, note, profile }) {
   const [messages, setMessages] = useState([
     { role: 'ai', content: '你好！我是你的AI写作助手。我可以帮你摘要、扩写内容或回答问题。有什么需要帮助的吗？' },
     { role: 'user', content: '帮我总结一下这篇笔记的要点' },
@@ -23,11 +23,7 @@ export default function AIPanel({ open, onClose, note }) {
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const chatRef = useRef(null)
-
-  useEffect(() => {
-    import('../store/db.js').then(m => m.getUserProfile()).then(p => setProfile(p))
-  }, [])
-  const userInitial = profile.name ? (profile.name.slice(-2) || profile.name[0]) : '?'
+  const userInitial = getInitials(profile?.name || '')
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight

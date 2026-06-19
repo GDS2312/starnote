@@ -34,7 +34,8 @@ export default function TagsView({ onSelectNote }) {
 
       <div className="tag-cloud">
         {tags.map((tag, i) => {
-          const size = 13 + (tag.count / maxCount) * 2
+          const ratio = tag.count / maxCount
+          const size = 12 + ratio * 14
           const color = TAG_COLORS[i % TAG_COLORS.length]
           return (
             <span
