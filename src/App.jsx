@@ -20,9 +20,6 @@ export default function App() {
   const [recording, setRecording] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const closeSidebar = () => setSidebarOpen(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  const closeSidebar = () => setSidebarOpen(false)
 
   useEffect(() => {
     initSampleData().then(all => {
